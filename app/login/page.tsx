@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
 import { api } from "@/lib/axios";
+import { useAuth } from "@/components/AuthProvider";
 
 interface FieldErrors {
   email?: string[];
@@ -21,6 +22,8 @@ export default function LoginPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const { refreshUser } = useAuth();
+
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -30,6 +33,7 @@ export default function LoginPage() {
 
     try {
       await api.post("/auth/login", { email, password });
+      await refreshUser();
       router.push("/dashboard");
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
