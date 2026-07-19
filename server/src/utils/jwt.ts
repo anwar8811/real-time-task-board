@@ -20,3 +20,24 @@ export function signAccessToken(payload: AccessTokenPayload): string {
 export function verifyAccessToken(token: string): AccessTokenPayload {
   return jwt.verify(token, JWT_SECRET) as AccessTokenPayload;
 }
+
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
+const REFRESH_TOKEN_EXPIRES_IN = "7d";
+
+if (!JWT_REFRESH_SECRET) {
+  throw new Error("JWT_REFRESH_SECRET is not defined in environment variables");
+}
+
+export interface RefreshTokenPayload {
+  userId: string;
+}
+
+export function signRefreshToken(payload: RefreshTokenPayload): string {
+  return jwt.sign(payload, JWT_REFRESH_SECRET, {
+    expiresIn: REFRESH_TOKEN_EXPIRES_IN,
+  });
+}
+
+export function verifyRefreshToken(token: string): RefreshTokenPayload {
+  return jwt.verify(token, JWT_REFRESH_SECRET) as RefreshTokenPayload;
+}
