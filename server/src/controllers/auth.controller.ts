@@ -7,7 +7,11 @@ import { loginSchema } from "../validations/auth.validation";
 import { loginUser } from "../services/auth.service";
 
 import { refreshTokenSchema } from "../validations/auth.validation";
-import { refreshAccessToken, logoutUser } from "../services/auth.service";
+import {
+  refreshAccessToken,
+  logoutUser,
+  getUserById,
+} from "../services/auth.service";
 
 export async function register(
   req: Request,
@@ -108,4 +112,28 @@ export async function logout(req: Request, res: Response, next: NextFunction) {
   } catch (err) {
     next(err);
   }
+}
+
+export async function me(req: Request, res: Response, next: NextFunction) {
+  if (!req.user) {
+    return res
+      .status(401)
+      .json({ message: "Authentication token is missing." });
+  }
+
+  try {
+    const user = await getUserById(req.user.userId);
+    return res.status(200).json({ user });
+  } catch (err) {
+    if (err instanceof Error && err.message === "USER_NOT_FOUND") {
+      return res.status(404).json({ message: "User not found." });
+    }
+    next(err);
+  }
+}
+
+export function adminCheck(req: Request, res: Response) {
+  return res.status(200).json({
+    message: `Welcome, admin! Your user id is ${req.user?.userId}.`,
+  });
 }

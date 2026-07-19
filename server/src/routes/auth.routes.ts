@@ -4,7 +4,11 @@ import {
   login,
   refresh,
   logout,
+  me,
+  adminCheck,
 } from "../controllers/auth.controller";
+import { authenticate, authorize } from "../middlewares/auth.middleware";
+import { Role } from "../generated/prisma/client";
 
 const router = Router();
 
@@ -12,5 +16,8 @@ router.post("/register", register);
 router.post("/login", login);
 router.post("/refresh", refresh);
 router.post("/logout", logout);
+
+router.get("/me", authenticate, me);
+router.get("/admin-check", authenticate, authorize(Role.ADMIN), adminCheck);
 
 export default router;

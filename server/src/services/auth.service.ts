@@ -132,3 +132,22 @@ export async function logoutUser(refreshToken: string): Promise<void> {
     data: { revoked: true },
   });
 }
+
+export async function getUserById(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      createdAt: true,
+    },
+  });
+
+  if (!user) {
+    throw new Error("USER_NOT_FOUND");
+  }
+
+  return user;
+}

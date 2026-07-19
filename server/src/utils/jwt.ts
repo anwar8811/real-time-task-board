@@ -1,5 +1,6 @@
 import "dotenv/config";
 import jwt from "jsonwebtoken";
+import { Role } from "../generated/prisma/client";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const ACCESS_TOKEN_EXPIRES_IN = "15m";
@@ -10,7 +11,7 @@ if (!JWT_SECRET) {
 
 export interface AccessTokenPayload {
   userId: string;
-  role: string;
+  role: Role;
 }
 
 export function signAccessToken(payload: AccessTokenPayload): string {
