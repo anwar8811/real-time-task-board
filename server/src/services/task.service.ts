@@ -1,5 +1,8 @@
 import { prisma } from "../config/prisma";
-import { CreateTaskInput } from "../validations/task.validation";
+import {
+  CreateTaskInput,
+  UpdateTaskInput,
+} from "../validations/task.validation";
 import { Role } from "../generated/prisma/client";
 import { AccessTokenPayload } from "../utils/jwt";
 import { ListTasksQuery } from "../validations/task.validation";
@@ -48,4 +51,28 @@ export async function getTaskById(
   }
 
   return task;
+}
+
+export async function updateTask(
+  currentUser: AccessTokenPayload,
+  taskId: string,
+  input: UpdateTaskInput,
+) {
+  const existingTask = await prisma.task.findUnique({ where: { id: taskId } });
+
+  if (!existingTask) {
+    throw new Error("TASK_NOT_FOUND");
+  }
+
+  const isOwner = existingTask.ownerId === currentUser.userId;
+  const isAdmin = currentUser.role === Role.ADMIN;
+
+  if (!isOwner && !isAdmin) {
+    throw new Error("TASK_NOT_FOUND");
+  }
+
+  return prisma.task.update({
+    where: { id: taskId },
+    data: input,
+  });
 }

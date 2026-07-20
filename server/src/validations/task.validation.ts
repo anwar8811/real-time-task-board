@@ -20,3 +20,11 @@ export const taskIdParamSchema = z.object({
 });
 
 export type TaskIdParam = z.infer<typeof taskIdParamSchema>;
+
+export const updateTaskSchema = z.object({
+  title: z.string().min(3, "Title must be at least 3 characters").optional(),
+  description: z.string().optional(),
+  status: z.enum(TaskStatus).optional(),
+});
+
+export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
