@@ -1,13 +1,16 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import {
+  assignOwnerSchema,
   createTaskSchema,
   listTasksQuerySchema,
   taskIdParamSchema,
   updateTaskSchema,
 } from "../validations/task.validation";
 import {
+  assignOwner,
   createTask,
+  deleteTask,
   getTaskById,
   listTasks,
   updateTask,
@@ -120,6 +123,74 @@ export async function update(req: Request, res: Response, next: NextFunction) {
       parsedBody.data,
     );
     return res.status(200).json({ message: "Task updated successfully", task });
+  } catch (err) {
+    if (err instanceof Error && err.message === "TASK_NOT_FOUND") {
+      return res.status(404).json({ message: "Task not found." });
+    }
+    next(err);
+  }
+}
+
+export async function assignOwnerHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  const parsedParams = taskIdParamSchema.safeParse(req.params);
+
+  if (!parsedParams.success) {
+    return res.status(400).json({
+      message: "Invalid input",
+      errors: z.flattenError(parsedParams.error).fieldErrors,
+    });
+  }
+
+  const parsedBody = assignOwnerSchema.safeParse(req.body);
+
+  if (!parsedBody.success) {
+    return res.status(400).json({
+      message: "Invalid input",
+      errors: z.flattenError(parsedBody.error).fieldErrors,
+    });
+  }
+
+  try {
+    const task = await assignOwner(parsedParams.data.id, parsedBody.data);
+    return res
+      .status(200)
+      .json({ message: "Owner reassigned successfully", task });
+  } catch (err) {
+    if (err instanceof Error && err.message === "TASK_NOT_FOUND") {
+      return res.status(404).json({ message: "Task not found." });
+    }
+    if (err instanceof Error && err.message === "OWNER_NOT_FOUND") {
+      return res
+        .status(404)
+        .json({ message: "The specified owner does not exist." });
+    }
+    next(err);
+  }
+}
+
+export async function remove(req: Request, res: Response, next: NextFunction) {
+  if (!req.user) {
+    return res
+      .status(401)
+      .json({ message: "Authentication token is missing." });
+  }
+
+  const parsedParams = taskIdParamSchema.safeParse(req.params);
+
+  if (!parsedParams.success) {
+    return res.status(400).json({
+      message: "Invalid input",
+      errors: z.flattenError(parsedParams.error).fieldErrors,
+    });
+  }
+
+  try {
+    await deleteTask(req.user, parsedParams.data.id);
+    return res.status(200).json({ message: "Task deleted successfully" });
   } catch (err) {
     if (err instanceof Error && err.message === "TASK_NOT_FOUND") {
       return res.status(404).json({ message: "Task not found." });

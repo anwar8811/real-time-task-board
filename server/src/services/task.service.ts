@@ -1,5 +1,6 @@
 import { prisma } from "../config/prisma";
 import {
+  AssignOwnerInput,
   CreateTaskInput,
   UpdateTaskInput,
 } from "../validations/task.validation";
@@ -75,4 +76,45 @@ export async function updateTask(
     where: { id: taskId },
     data: input,
   });
+}
+
+export async function assignOwner(taskId: string, input: AssignOwnerInput) {
+  const task = await prisma.task.findUnique({ where: { id: taskId } });
+
+  if (!task) {
+    throw new Error("TASK_NOT_FOUND");
+  }
+
+  const newOwner = await prisma.user.findUnique({
+    where: { id: input.ownerId },
+  });
+
+  if (!newOwner) {
+    throw new Error("OWNER_NOT_FOUND");
+  }
+
+  return prisma.task.update({
+    where: { id: taskId },
+    data: { ownerId: input.ownerId },
+  });
+}
+
+export async function deleteTask(
+  currentUser: AccessTokenPayload,
+  taskId: string,
+) {
+  const task = await prisma.task.findUnique({ where: { id: taskId } });
+
+  if (!task) {
+    throw new Error("TASK_NOT_FOUND");
+  }
+
+  const isOwner = task.ownerId === currentUser.userId;
+  const isAdmin = currentUser.role === Role.ADMIN;
+
+  if (!isOwner && !isAdmin) {
+    throw new Error("TASK_NOT_FOUND");
+  }
+
+  await prisma.task.delete({ where: { id: taskId } });
 }

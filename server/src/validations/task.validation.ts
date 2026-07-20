@@ -28,3 +28,9 @@ export const updateTaskSchema = z.object({
 });
 
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+
+export const assignOwnerSchema = z.object({
+  ownerId: z.string().min(1, "ownerId is required"),
+});
+
+export type AssignOwnerInput = z.infer<typeof assignOwnerSchema>;
