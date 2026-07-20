@@ -1,5 +1,8 @@
 import { prisma } from "../config/prisma";
 import { CreateTaskInput } from "../validations/task.validation";
+import { Role } from "../generated/prisma/client";
+import { AccessTokenPayload } from "../utils/jwt";
+import { ListTasksQuery } from "../validations/task.validation";
 
 export async function createTask(ownerId: string, input: CreateTaskInput) {
   return prisma.task.create({
@@ -9,4 +12,40 @@ export async function createTask(ownerId: string, input: CreateTaskInput) {
       ownerId,
     },
   });
+}
+
+export async function listTasks(
+  currentUser: AccessTokenPayload,
+  query: ListTasksQuery,
+) {
+  return prisma.task.findMany({
+    where: {
+      ownerId: currentUser.role === Role.ADMIN ? undefined : currentUser.userId,
+      status: query.status,
+      title: query.search
+        ? { contains: query.search, mode: "insensitive" }
+        : undefined,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function getTaskById(
+  currentUser: AccessTokenPayload,
+  taskId: string,
+) {
+  const task = await prisma.task.findUnique({ where: { id: taskId } });
+
+  if (!task) {
+    throw new Error("TASK_NOT_FOUND");
+  }
+
+  const isOwner = task.ownerId === currentUser.userId;
+  const isAdmin = currentUser.role === Role.ADMIN;
+
+  if (!isOwner && !isAdmin) {
+    throw new Error("TASK_NOT_FOUND");
+  }
+
+  return task;
 }
