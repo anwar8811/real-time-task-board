@@ -22,6 +22,9 @@ export default function DashboardPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
   async function loadTasks() {
     try {
       const response = await api.get("/tasks");
@@ -57,6 +60,32 @@ export default function DashboardPage() {
       setFormError("Unable to create task. Please check your input.");
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleStatusChange(taskId: string, status: Task["status"]) {
+    setActionError(null);
+    setPendingTaskId(taskId);
+    try {
+      await api.patch(`/tasks/${taskId}`, { status });
+      await loadTasks();
+    } catch {
+      setActionError("Unable to update task status.");
+    } finally {
+      setPendingTaskId(null);
+    }
+  }
+
+  async function handleDelete(taskId: string) {
+    setActionError(null);
+    setPendingTaskId(taskId);
+    try {
+      await api.delete(`/tasks/${taskId}`);
+      await loadTasks();
+    } catch {
+      setActionError("Unable to delete task.");
+    } finally {
+      setPendingTaskId(null);
     }
   }
 
@@ -115,6 +144,12 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-3">
           <h1 className="text-2xl font-bold">Your Tasks</h1>
 
+          {actionError && (
+            <div className="alert alert-error">
+              <span>{actionError}</span>
+            </div>
+          )}
+
           {isLoadingTasks ? (
             <div className="flex justify-center py-8">
               <span className="loading loading-spinner loading-lg" />
@@ -127,9 +162,33 @@ export default function DashboardPage() {
             tasks.map((task) => (
               <div key={task.id} className="card bg-base-100 shadow">
                 <div className="card-body py-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <h3 className="font-semibold">{task.title}</h3>
-                    <span className="badge badge-outline">{task.status}</span>
+                    <div className="flex items-center gap-2">
+                      <select
+                        className="select select-sm"
+                        value={task.status}
+                        disabled={pendingTaskId === task.id}
+                        onChange={(event) =>
+                          handleStatusChange(
+                            task.id,
+                            event.target.value as Task["status"],
+                          )
+                        }
+                      >
+                        <option value="PENDING">Pending</option>
+                        <option value="IN_PROGRESS">In Progress</option>
+                        <option value="COMPLETED">Completed</option>
+                      </select>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-error btn-outline"
+                        disabled={pendingTaskId === task.id}
+                        onClick={() => handleDelete(task.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                   {task.description && (
                     <p className="text-sm text-base-content/70">
