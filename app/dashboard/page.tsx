@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, SubmitEvent } from "react";
+import { useEffect, useState, SubmitEvent, useCallback } from "react";
 import { api } from "@/lib/axios";
 
 interface Task {
@@ -25,23 +25,35 @@ export default function DashboardPage() {
   const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  async function loadTasks() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"" | Task["status"]>("");
+
+  const loadTasks = useCallback(async () => {
     try {
-      const response = await api.get("/tasks");
+      const response = await api.get("/tasks", {
+        params: {
+          search: searchTerm || undefined,
+          status: statusFilter || undefined,
+        },
+      });
       setTasks(response.data.tasks);
     } catch {
       setFormError("Unable to load tasks.");
     } finally {
       setIsLoadingTasks(false);
     }
-  }
+  }, [searchTerm, statusFilter]);
 
   useEffect(() => {
-    const run = async () => {
-      await loadTasks();
-    };
-    run();
-  }, []);
+    const timeoutId = setTimeout(() => {
+      const run = async () => {
+        await loadTasks();
+      };
+      run();
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [loadTasks]);
 
   async function handleCreate(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -149,6 +161,28 @@ export default function DashboardPage() {
               <span>{actionError}</span>
             </div>
           )}
+
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              type="text"
+              className="input input-sm flex-1"
+              placeholder="Search tasks..."
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
+            <select
+              className="select select-sm"
+              value={statusFilter}
+              onChange={(event) =>
+                setStatusFilter(event.target.value as typeof statusFilter)
+              }
+            >
+              <option value="">All statuses</option>
+              <option value="PENDING">Pending</option>
+              <option value="IN_PROGRESS">In Progress</option>
+              <option value="COMPLETED">Completed</option>
+            </select>
+          </div>
 
           {isLoadingTasks ? (
             <div className="flex justify-center py-8">
