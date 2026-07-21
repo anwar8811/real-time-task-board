@@ -3,6 +3,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth.routes";
 import taskRoutes from "./routes/task.routes";
+import { createServer } from "http";
+import { initializeSocket } from "./sockets";
 
 dotenv.config();
 
@@ -23,6 +25,13 @@ app.get("/health", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/tasks", taskRoutes);
 
-app.listen(PORT, () => {
+// app.listen(PORT, () => {
+//   console.log(`Server running on port ${PORT}`);
+// });
+
+const httpServer = createServer(app);
+initializeSocket(httpServer);
+
+httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
