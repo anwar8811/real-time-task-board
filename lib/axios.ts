@@ -1,5 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
+const EXCLUDED_FROM_RETRY = ["/auth/login", "/auth/refresh"];
+
 export const api = axios.create({
   baseURL: "/api",
   withCredentials: true,
@@ -16,13 +18,15 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as RetryableConfig | undefined;
-    const isAuthEndpoint = originalRequest?.url?.startsWith("/auth/");
+    const isExcludedFromRetry = EXCLUDED_FROM_RETRY.some((path) =>
+      originalRequest?.url?.startsWith(path),
+    );
 
     if (
       error.response?.status === 401 &&
       originalRequest &&
       !originalRequest._retry &&
-      !isAuthEndpoint
+      !isExcludedFromRetry
     ) {
       originalRequest._retry = true;
 
