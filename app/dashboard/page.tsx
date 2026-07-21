@@ -2,6 +2,8 @@
 
 import { useEffect, useState, SubmitEvent, useCallback } from "react";
 import { api } from "@/lib/axios";
+import { useSocket } from "@/components/SocketProvider";
+import { useAuth } from "@/components/AuthProvider";
 
 interface Task {
   id: string;
@@ -14,6 +16,9 @@ interface Task {
 }
 
 export default function DashboardPage() {
+  const { socket } = useSocket();
+  const { user } = useAuth();
+
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
 
@@ -54,6 +59,64 @@ export default function DashboardPage() {
 
     return () => clearTimeout(timeoutId);
   }, [loadTasks]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    function matchesFilters(task: Task) {
+      if (statusFilter && task.status !== statusFilter) return false;
+      if (
+        searchTerm &&
+        !task.title.toLowerCase().includes(searchTerm.toLowerCase())
+      ) {
+        return false;
+      }
+      return true;
+    }
+
+    function handleTaskCreated(newTask: Task) {
+      if (!matchesFilters(newTask)) return;
+      setTasks((prev) => {
+        if (prev.some((t) => t.id === newTask.id)) return prev;
+        return [newTask, ...prev];
+      });
+    }
+
+    function handleTaskUpdated(updatedTask: Task) {
+      setTasks((prev) => {
+        const isVisibleToMe =
+          user?.role === "ADMIN" || updatedTask.ownerId === user?.id;
+        const existingIndex = prev.findIndex((t) => t.id === updatedTask.id);
+
+        if (!isVisibleToMe || !matchesFilters(updatedTask)) {
+          if (existingIndex === -1) return prev;
+          return prev.filter((t) => t.id !== updatedTask.id);
+        }
+
+        if (existingIndex === -1) {
+          return [updatedTask, ...prev];
+        }
+
+        const next = [...prev];
+        next[existingIndex] = updatedTask;
+        return next;
+      });
+    }
+
+    function handleTaskDeleted({ id }: { id: string }) {
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+    }
+
+    socket.on("task:created", handleTaskCreated);
+    socket.on("task:updated", handleTaskUpdated);
+    socket.on("task:deleted", handleTaskDeleted);
+
+    return () => {
+      socket.off("task:created", handleTaskCreated);
+      socket.off("task:updated", handleTaskUpdated);
+      socket.off("task:deleted", handleTaskDeleted);
+    };
+  }, [socket, user, statusFilter, searchTerm]);
 
   async function handleCreate(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();

@@ -31,14 +31,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <body className="min-h-full flex flex-col">
-          <AuthProvider>
-            <SocketProvider>
-              <NavHeader />
-              <div className="flex-1">{children}</div>
-            </SocketProvider>
-          </AuthProvider>
-        </body>
+        <AuthProvider>
+          <SocketProvider>
+            <NavHeader />
+            <div className="flex-1">{children}</div>
+          </SocketProvider>
+        </AuthProvider>
       </body>
     </html>
   );
