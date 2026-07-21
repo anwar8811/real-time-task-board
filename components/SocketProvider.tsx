@@ -34,11 +34,22 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const response = await api.get("/auth/socket-token");
-      if (cancelled) return;
-
       const newSocket = io(process.env.NEXT_PUBLIC_BACKEND_URL, {
-        auth: { token: response.data.token },
+        auth: async (callback) => {
+          try {
+            const response = await api.get("/auth/socket-token");
+            if (cancelled) return;
+            callback({ token: response.data.token });
+          } catch {
+            if (cancelled) return;
+            newSocket.io.reconnection(false);
+            callback({});
+          }
+        },
+      });
+
+      newSocket.on("connect_error", (error) => {
+        console.error("Socket connection failed:", error.message);
       });
 
       socketRef.current = newSocket;
