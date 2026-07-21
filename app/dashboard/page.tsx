@@ -15,6 +15,18 @@ interface Task {
   updatedAt: string;
 }
 
+const STATUS_BADGE_CLASS: Record<Task["status"], string> = {
+  PENDING: "badge-warning",
+  IN_PROGRESS: "badge-info",
+  COMPLETED: "badge-success",
+};
+
+const STATUS_LABEL: Record<Task["status"], string> = {
+  PENDING: "Pending",
+  IN_PROGRESS: "In Progress",
+  COMPLETED: "Completed",
+};
+
 export default function DashboardPage() {
   const { socket } = useSocket();
   const { user } = useAuth();
@@ -165,137 +177,166 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-base-200 px-4 py-8">
-      <div className="mx-auto flex max-w-2xl flex-col gap-6">
-        <div className="card bg-base-100 shadow-xl">
-          <div className="card-body">
-            <h2 className="card-title">Create a new task</h2>
+    <main className="flex-1 bg-base-200 px-4 py-8 sm:px-8">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold">Your Tasks</h1>
+          <p className="text-sm text-base-content/60">
+            Everything assigned to you updates here in real time.
+          </p>
+        </div>
 
-            {formError && (
-              <div className="alert alert-error mt-2">
-                <span>{formError}</span>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
+          <div className="card h-fit bg-base-100 shadow-xl lg:sticky lg:top-20">
+            <div className="card-body">
+              <h2 className="card-title text-base">Create a new task</h2>
+
+              {formError && (
+                <div className="alert alert-error">
+                  <span>{formError}</span>
+                </div>
+              )}
+
+              <form
+                onSubmit={handleCreate}
+                className="flex flex-col gap-4 mt-2"
+              >
+                <fieldset className="fieldset">
+                  <legend className="fieldset-legend">Title</legend>
+                  <input
+                    type="text"
+                    className="input w-full"
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value)}
+                    placeholder="What needs to be done?"
+                  />
+                </fieldset>
+
+                <fieldset className="fieldset">
+                  <legend className="fieldset-legend">
+                    Description (optional)
+                  </legend>
+                  <textarea
+                    className="textarea w-full"
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    placeholder="Add more detail..."
+                  />
+                </fieldset>
+
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <span className="loading loading-spinner loading-sm" />
+                  ) : (
+                    "Add Task"
+                  )}
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            {actionError && (
+              <div className="alert alert-error">
+                <span>{actionError}</span>
               </div>
             )}
 
-            <form onSubmit={handleCreate} className="flex flex-col gap-4 mt-2">
-              <fieldset className="fieldset">
-                <legend className="fieldset-legend">Title</legend>
+            <div className="card bg-base-100 shadow-sm">
+              <div className="card-body flex-col gap-2 p-4 sm:flex-row">
                 <input
                   type="text"
-                  className="input w-full"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  placeholder="What needs to be done?"
+                  className="input input-sm flex-1"
+                  placeholder="Search tasks..."
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
                 />
-              </fieldset>
-
-              <fieldset className="fieldset">
-                <legend className="fieldset-legend">
-                  Description (optional)
-                </legend>
-                <textarea
-                  className="textarea w-full"
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                  placeholder="Add more detail..."
-                />
-              </fieldset>
-
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <span className="loading loading-spinner loading-sm" />
-                ) : (
-                  "Add Task"
-                )}
-              </button>
-            </form>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <h1 className="text-2xl font-bold">Your Tasks</h1>
-
-          {actionError && (
-            <div className="alert alert-error">
-              <span>{actionError}</span>
+                <select
+                  className="select select-sm"
+                  value={statusFilter}
+                  onChange={(event) =>
+                    setStatusFilter(event.target.value as typeof statusFilter)
+                  }
+                >
+                  <option value="">All statuses</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="COMPLETED">Completed</option>
+                </select>
+              </div>
             </div>
-          )}
 
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <input
-              type="text"
-              className="input input-sm flex-1"
-              placeholder="Search tasks..."
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-            />
-            <select
-              className="select select-sm"
-              value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as typeof statusFilter)
-              }
-            >
-              <option value="">All statuses</option>
-              <option value="PENDING">Pending</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="COMPLETED">Completed</option>
-            </select>
-          </div>
-
-          {isLoadingTasks ? (
-            <div className="flex justify-center py-8">
-              <span className="loading loading-spinner loading-lg" />
-            </div>
-          ) : tasks.length === 0 ? (
-            <p className="text-base-content/70">
-              No tasks yet — create your first one above.
-            </p>
-          ) : (
-            tasks.map((task) => (
-              <div key={task.id} className="card bg-base-100 shadow">
-                <div className="card-body py-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="font-semibold">{task.title}</h3>
-                    <div className="flex items-center gap-2">
-                      <select
-                        className="select select-sm"
-                        value={task.status}
-                        disabled={pendingTaskId === task.id}
-                        onChange={(event) =>
-                          handleStatusChange(
-                            task.id,
-                            event.target.value as Task["status"],
-                          )
-                        }
-                      >
-                        <option value="PENDING">Pending</option>
-                        <option value="IN_PROGRESS">In Progress</option>
-                        <option value="COMPLETED">Completed</option>
-                      </select>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-error btn-outline"
-                        disabled={pendingTaskId === task.id}
-                        onClick={() => handleDelete(task.id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                  {task.description && (
-                    <p className="text-sm text-base-content/70">
-                      {task.description}
-                    </p>
-                  )}
+            {isLoadingTasks ? (
+              <div className="flex justify-center py-12">
+                <span className="loading loading-spinner loading-lg" />
+              </div>
+            ) : tasks.length === 0 ? (
+              <div className="card bg-base-100 shadow-sm">
+                <div className="card-body items-center py-12 text-center">
+                  <p className="font-medium">No tasks yet</p>
+                  <p className="text-sm text-base-content/60">
+                    Create your first task using the form on the left.
+                  </p>
                 </div>
               </div>
-            ))
-          )}
+            ) : (
+              <div className="flex flex-col gap-3">
+                {tasks.map((task) => (
+                  <div key={task.id} className="card bg-base-100 shadow-sm">
+                    <div className="card-body gap-2 py-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold">{task.title}</h3>
+                            <span
+                              className={`badge badge-sm ${STATUS_BADGE_CLASS[task.status]}`}
+                            >
+                              {STATUS_LABEL[task.status]}
+                            </span>
+                          </div>
+                          {task.description && (
+                            <p className="text-sm text-base-content/70">
+                              {task.description}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <select
+                            className="select select-sm"
+                            value={task.status}
+                            disabled={pendingTaskId === task.id}
+                            onChange={(event) =>
+                              handleStatusChange(
+                                task.id,
+                                event.target.value as Task["status"],
+                              )
+                            }
+                          >
+                            <option value="PENDING">Pending</option>
+                            <option value="IN_PROGRESS">In Progress</option>
+                            <option value="COMPLETED">Completed</option>
+                          </select>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-error btn-outline"
+                            disabled={pendingTaskId === task.id}
+                            onClick={() => handleDelete(task.id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </main>
