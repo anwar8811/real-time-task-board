@@ -7,15 +7,16 @@ import {
 import { Role } from "../generated/prisma/client";
 import { AccessTokenPayload } from "../utils/jwt";
 import { ListTasksQuery } from "../validations/task.validation";
+import { broadcastTaskEvent, notifyUser } from "../sockets/broadcast";
 
 export async function createTask(ownerId: string, input: CreateTaskInput) {
-  return prisma.task.create({
-    data: {
-      title: input.title,
-      description: input.description,
-      ownerId,
-    },
+  const task = await prisma.task.create({
+    data: { title: input.title, description: input.description, ownerId },
   });
+
+  broadcastTaskEvent("task:created", task.ownerId, task);
+
+  return task;
 }
 
 export async function listTasks(
@@ -72,10 +73,14 @@ export async function updateTask(
     throw new Error("TASK_NOT_FOUND");
   }
 
-  return prisma.task.update({
+  const updatedTask = await prisma.task.update({
     where: { id: taskId },
     data: input,
   });
+
+  broadcastTaskEvent("task:updated", updatedTask.ownerId, updatedTask);
+
+  return updatedTask;
 }
 
 export async function assignOwner(taskId: string, input: AssignOwnerInput) {
@@ -93,10 +98,20 @@ export async function assignOwner(taskId: string, input: AssignOwnerInput) {
     throw new Error("OWNER_NOT_FOUND");
   }
 
-  return prisma.task.update({
+  const previousOwnerId = task.ownerId;
+
+  const updatedTask = await prisma.task.update({
     where: { id: taskId },
     data: { ownerId: input.ownerId },
   });
+
+  broadcastTaskEvent("task:updated", updatedTask.ownerId, updatedTask);
+
+  if (previousOwnerId !== updatedTask.ownerId) {
+    notifyUser(previousOwnerId, "task:updated", updatedTask);
+  }
+
+  return updatedTask;
 }
 
 export async function deleteTask(
@@ -117,4 +132,6 @@ export async function deleteTask(
   }
 
   await prisma.task.delete({ where: { id: taskId } });
+
+  broadcastTaskEvent("task:deleted", task.ownerId, { id: taskId });
 }
