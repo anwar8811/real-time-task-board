@@ -2,12 +2,16 @@ import "dotenv/config";
 import jwt from "jsonwebtoken";
 import { Role } from "../generated/prisma/client";
 
-const JWT_SECRET = process.env.JWT_SECRET;
-const ACCESS_TOKEN_EXPIRES_IN = "15m";
-
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET is not defined in environment variables");
+function getRequiredEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`${name} is not defined in environment variables`);
+  }
+  return value;
 }
+
+const JWT_SECRET = getRequiredEnv("JWT_SECRET");
+const ACCESS_TOKEN_EXPIRES_IN = "15m";
 
 export interface AccessTokenPayload {
   userId: string;
@@ -19,15 +23,11 @@ export function signAccessToken(payload: AccessTokenPayload): string {
 }
 
 export function verifyAccessToken(token: string): AccessTokenPayload {
-  return jwt.verify(token, JWT_SECRET) as AccessTokenPayload;
+  return jwt.verify(token, JWT_SECRET) as unknown as AccessTokenPayload;
 }
 
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
+const JWT_REFRESH_SECRET = getRequiredEnv("JWT_REFRESH_SECRET");
 const REFRESH_TOKEN_EXPIRES_IN = "7d";
-
-if (!JWT_REFRESH_SECRET) {
-  throw new Error("JWT_REFRESH_SECRET is not defined in environment variables");
-}
 
 export interface RefreshTokenPayload {
   userId: string;
@@ -40,5 +40,5 @@ export function signRefreshToken(payload: RefreshTokenPayload): string {
 }
 
 export function verifyRefreshToken(token: string): RefreshTokenPayload {
-  return jwt.verify(token, JWT_REFRESH_SECRET) as RefreshTokenPayload;
+  return jwt.verify(token, JWT_REFRESH_SECRET) as unknown as RefreshTokenPayload;
 }
