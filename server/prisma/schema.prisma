@@ -24,6 +24,7 @@ model Task {
   title       String
   description String?
   status      TaskStatus @default(PENDING)
+  summary     String?
   owner       User       @relation(fields: [ownerId], references: [id])
   ownerId     String
   createdAt   DateTime   @default(now())

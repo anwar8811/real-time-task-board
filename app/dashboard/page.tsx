@@ -10,6 +10,7 @@ interface Task {
   title: string;
   description: string | null;
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED";
+  summary: string | null;
   ownerId: string;
   createdAt: string;
   updatedAt: string;
@@ -212,6 +213,19 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleSummarize(taskId: string) {
+    setActionError(null);
+    setPendingTaskId(taskId);
+    try {
+      await api.post(`/tasks/${taskId}/summarize`);
+      await loadTasks();
+    } catch {
+      setActionError("Unable to generate a summary right now.");
+    } finally {
+      setPendingTaskId(null);
+    }
+  }
+
   return (
     <main className="flex-1 bg-base-200 px-4 py-8 sm:px-8">
       <div className="mx-auto max-w-6xl">
@@ -339,9 +353,27 @@ export default function DashboardPage() {
                               {task.description}
                             </p>
                           )}
+                          {task.summary && (
+                            <p className="rounded-md bg-primary/10 px-2 py-1 text-sm text-primary">
+                              <span className="font-semibold">AI summary:</span>{" "}
+                              {task.summary}
+                            </p>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline"
+                            disabled={pendingTaskId === task.id}
+                            onClick={() => handleSummarize(task.id)}
+                          >
+                            {pendingTaskId === task.id ? (
+                              <span className="loading loading-spinner loading-xs" />
+                            ) : (
+                              "Summarize"
+                            )}
+                          </button>
                           <select
                             className="select select-sm"
                             value={task.status}

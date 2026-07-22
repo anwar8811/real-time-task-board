@@ -8,6 +8,7 @@ import { Role } from "../generated/prisma/client";
 import { AccessTokenPayload } from "../utils/jwt";
 import { ListTasksQuery } from "../validations/task.validation";
 import { broadcastTaskEvent, notifyUser } from "../sockets/broadcast";
+import { summarizeTaskWithAI } from "./ai.service";
 
 export async function createTask(ownerId: string, input: CreateTaskInput) {
   const task = await prisma.task.create({
@@ -110,6 +111,35 @@ export async function assignOwner(taskId: string, input: AssignOwnerInput) {
   if (previousOwnerId !== updatedTask.ownerId) {
     notifyUser(previousOwnerId, "task:updated", updatedTask);
   }
+
+  return updatedTask;
+}
+
+export async function summarizeTask(
+  currentUser: AccessTokenPayload,
+  taskId: string,
+) {
+  const task = await prisma.task.findUnique({ where: { id: taskId } });
+
+  if (!task) {
+    throw new Error("TASK_NOT_FOUND");
+  }
+
+  const isOwner = task.ownerId === currentUser.userId;
+  const isAdmin = currentUser.role === Role.ADMIN;
+
+  if (!isOwner && !isAdmin) {
+    throw new Error("TASK_NOT_FOUND");
+  }
+
+  const summary = await summarizeTaskWithAI(task.title, task.description);
+
+  const updatedTask = await prisma.task.update({
+    where: { id: taskId },
+    data: { summary },
+  });
+
+  broadcastTaskEvent("task:updated", updatedTask.ownerId, updatedTask);
 
   return updatedTask;
 }

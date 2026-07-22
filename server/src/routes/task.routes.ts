@@ -8,6 +8,7 @@ import {
   list,
   update,
   assignOwnerHandler,
+  summarize,
   remove,
 } from "../controllers/task.controller";
 
@@ -21,6 +22,7 @@ router.get("/", list);
 router.get("/:id", getOne);
 router.patch("/:id", update);
 router.patch("/:id/owner", authorize(Role.ADMIN), assignOwnerHandler);
+router.post("/:id/summarize", summarize);
 router.delete("/:id", remove);
 
 export default router;

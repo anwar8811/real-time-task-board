@@ -13,6 +13,7 @@ import {
   deleteTask,
   getTaskById,
   listTasks,
+  summarizeTask,
   updateTask,
 } from "../services/task.service";
 
@@ -126,6 +127,44 @@ export async function update(req: Request, res: Response, next: NextFunction) {
   } catch (err) {
     if (err instanceof Error && err.message === "TASK_NOT_FOUND") {
       return res.status(404).json({ message: "Task not found." });
+    }
+    next(err);
+  }
+}
+
+export async function summarize(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  if (!req.user) {
+    return res
+      .status(401)
+      .json({ message: "Authentication token is missing." });
+  }
+
+  const parsedParams = taskIdParamSchema.safeParse(req.params);
+
+  if (!parsedParams.success) {
+    return res.status(400).json({
+      message: "Invalid input",
+      errors: z.flattenError(parsedParams.error).fieldErrors,
+    });
+  }
+
+  try {
+    const task = await summarizeTask(req.user, parsedParams.data.id);
+    return res
+      .status(200)
+      .json({ message: "Summary generated successfully", task });
+  } catch (err) {
+    if (err instanceof Error && err.message === "TASK_NOT_FOUND") {
+      return res.status(404).json({ message: "Task not found." });
+    }
+    if (err instanceof Error && err.message === "AI_REQUEST_FAILED") {
+      return res
+        .status(502)
+        .json({ message: "Unable to generate a summary right now." });
     }
     next(err);
   }
