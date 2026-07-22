@@ -151,3 +151,14 @@ export async function getUserById(userId: string) {
 
   return user;
 }
+
+export async function listUsers() {
+  return prisma.user.findMany({
+    select: {
+      id: true,
+      name: true,
+      email: true,
+    },
+    orderBy: { name: "asc" },
+  });
+}

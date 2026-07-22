@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { registerSchema } from "../validations/auth.validation";
-import { registerUser } from "../services/auth.service";
+import { listUsers, registerUser } from "../services/auth.service";
 
 import { loginSchema } from "../validations/auth.validation";
 import { loginUser } from "../services/auth.service";
@@ -136,4 +136,17 @@ export function adminCheck(req: Request, res: Response) {
   return res.status(200).json({
     message: `Welcome, admin! Your user id is ${req.user?.userId}.`,
   });
+}
+
+export async function listUsersHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const users = await listUsers();
+    return res.status(200).json({ users });
+  } catch (err) {
+    next(err);
+  }
 }

@@ -15,6 +15,12 @@ interface Task {
   updatedAt: string;
 }
 
+interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+}
+
 const STATUS_BADGE_CLASS: Record<Task["status"], string> = {
   PENDING: "badge-warning",
   IN_PROGRESS: "badge-info",
@@ -44,6 +50,8 @@ export default function DashboardPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"" | Task["status"]>("");
+
+  const [users, setUsers] = useState<TeamMember[]>([]);
 
   const loadTasks = useCallback(async () => {
     try {
@@ -130,6 +138,21 @@ export default function DashboardPage() {
     };
   }, [socket, user, statusFilter, searchTerm]);
 
+  useEffect(() => {
+    if (user?.role !== "ADMIN") return;
+
+    const loadUsers = async () => {
+      try {
+        const response = await api.get("/auth/users");
+        setUsers(response.data.users);
+      } catch {
+        console.error("Unable to load users for reassignment.");
+      }
+    };
+
+    loadUsers();
+  }, [user]);
+
   async function handleCreate(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
@@ -171,6 +194,19 @@ export default function DashboardPage() {
       await loadTasks();
     } catch {
       setActionError("Unable to delete task.");
+    } finally {
+      setPendingTaskId(null);
+    }
+  }
+
+  async function handleReassignOwner(taskId: string, ownerId: string) {
+    setActionError(null);
+    setPendingTaskId(taskId);
+    try {
+      await api.patch(`/tasks/${taskId}/owner`, { ownerId });
+      await loadTasks();
+    } catch {
+      setActionError("Unable to reassign this task.");
     } finally {
       setPendingTaskId(null);
     }
@@ -321,6 +357,25 @@ export default function DashboardPage() {
                             <option value="IN_PROGRESS">In Progress</option>
                             <option value="COMPLETED">Completed</option>
                           </select>
+
+                          {user?.role === "ADMIN" && users.length > 0 && (
+                            <select
+                              className="select select-sm w-36 truncate"
+                              value={task.ownerId}
+                              disabled={pendingTaskId === task.id}
+                              onChange={(event) =>
+                                handleReassignOwner(task.id, event.target.value)
+                              }
+                              title="Reassign owner"
+                            >
+                              {users.map((member) => (
+                                <option key={member.id} value={member.id}>
+                                  {member.name}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+
                           <button
                             type="button"
                             className="btn btn-sm btn-error btn-outline"

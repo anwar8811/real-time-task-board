@@ -6,6 +6,7 @@ import {
   logout,
   me,
   adminCheck,
+  listUsersHandler,
 } from "../controllers/auth.controller";
 import { authenticate, authorize } from "../middlewares/auth.middleware";
 import { Role } from "../generated/prisma/client";
@@ -19,5 +20,6 @@ router.post("/logout", logout);
 
 router.get("/me", authenticate, me);
 router.get("/admin-check", authenticate, authorize(Role.ADMIN), adminCheck);
+router.get("/users", authenticate, authorize(Role.ADMIN), listUsersHandler);
 
 export default router;
